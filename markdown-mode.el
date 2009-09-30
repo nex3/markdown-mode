@@ -37,8 +37,10 @@
 ;;    * [Screenshot][]
 ;;    * [Release notes][]
 ;;
-;; markdown-mode is also available in the Debian `emacs-goodies-el`
-;; package (beginning with revision 27.0-1).
+;; markdown-mode is also available in the Debian
+;; [emacs-goodies-el](http://packages.debian.org/emacs-goodies-el)
+;; package (beginning with revision 27.0-1) and the OpenBSD
+;; [textproc/markdown-mode](http://pkgsrc.se/textproc/markdown-mode) package.
 ;;
 ;;  [markdown-mode.el]: http://jblevins.org/projects/markdown-mode/markdown-mode.el
 ;;  [screenshot]: http://jblevins.org/projects/markdown-mode/screenshots/20080604-001.png
@@ -1116,7 +1118,7 @@ When RECHECK is non-nil, BUFFER gets rechecked for undefined
 references so that REF disappears from the list of those links."
   (with-current-buffer buffer
       (when (not (eq major-mode 'markdown-mode))
-        (error "Not available in current mdoe"))
+        (error "Not available in current mode"))
       (goto-char (point-max))
       (indent-new-comment-line)
       (insert (concat ref ": ")))
