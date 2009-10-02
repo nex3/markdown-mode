@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2007, 2008, 2009 Jason Blevins
 
-;; Version: 1.7-dev
+;; Version: 1.7
 ;; Keywords: Markdown major mode
 ;; Author: Jason Blevins <jrblevin@sdf.lonestar.org>
 ;; URL: http://jblevins.org/projects/markdown-mode/
@@ -31,18 +31,20 @@
 ;;
 ;;  [Markdown]: http://daringfireball.net/projects/markdown/
 ;;
-;; The latest stable version is markdown-mode 1.6, released on June 4. 2008:
+;; The latest stable version is markdown-mode 1.7, released on October 1, 2009:
 ;;
 ;;    * [markdown-mode.el][]
 ;;    * [Screenshot][]
 ;;    * [Release notes][]
 ;;
-;; markdown-mode is also available in the Debian `emacs-goodies-el`
-;; package (beginning with revision 27.0-1).
+;; markdown-mode is also available in the Debian
+;; [emacs-goodies-el](http://packages.debian.org/emacs-goodies-el)
+;; package (beginning with revision 27.0-1) and the OpenBSD
+;; [textproc/markdown-mode](http://pkgsrc.se/textproc/markdown-mode) package.
 ;;
 ;;  [markdown-mode.el]: http://jblevins.org/projects/markdown-mode/markdown-mode.el
 ;;  [screenshot]: http://jblevins.org/projects/markdown-mode/screenshots/20080604-001.png
-;;  [release notes]: http://jblevins.org/projects/markdown-mode/rev-1-6
+;;  [release notes]: http://jblevins.org/projects/markdown-mode/rev-1-7
 
 ;; The latest development version can be downloaded directly
 ;; ([markdown-mode.el][devel.el]) or it can be obtained from the
@@ -163,7 +165,7 @@
 ;;
 ;;     All header commands use text in the active region, if any, as
 ;;     the header text.  To insert an atx or hash style level-n
-;;     header, press `C-c C-t n` where n is between 1 and 5.  For a
+;;     header, press `C-c C-t n` where n is between 1 and 6.  For a
 ;;     top-level setext or underline style header press `C-c C-t t`
 ;;     (mnemonic: title) and for a second-level underline-style header
 ;;     press `C-c C-t s` (mnemonic: section).
@@ -238,6 +240,8 @@
 ;;   * Ankit Solanki <ankit.solanki@gmail.com> for longlines.el compatibility.
 ;;   * Hilko Bengen <bengen@debian.org> for proper XHTML output.
 ;;   * Jose A. Ortega Ruiz <jao@gnu.org> for Emacs 23 fixes.
+;;   * Alec Resnick <alec@sproutward.org> for bug reports.
+;;   * Peter Williams <pezra@barelyenough.org> for fill-paragraph enhancements.
 
 ;;; Bugs:
 
@@ -268,10 +272,12 @@
 ;;   * 2007-06-29: Version 1.4
 ;;   * 2008-05-24: [Version 1.5][]
 ;;   * 2008-06-04: [Version 1.6][]
+;;   * 2008-10-01: [Version 1.7][]
 ;;
 ;; [Version 1.3]: http://jblevins.org/projects/markdown-mode/rev-1-3
 ;; [Version 1.5]: http://jblevins.org/projects/markdown-mode/rev-1-5
 ;; [Version 1.6]: http://jblevins.org/projects/markdown-mode/rev-1-6
+;; [Version 1.7]: http://jblevins.org/projects/markdown-mode/rev-1-7
 
 
 
@@ -374,6 +380,12 @@ This will not take effect until Emacs is restarted."
 (defvar markdown-header-face-4 'markdown-header-face-4
   "Face name to use for level-4 headers.")
 
+(defvar markdown-header-face-5 'markdown-header-face-5
+  "Face name to use for level-5 headers.")
+
+(defvar markdown-header-face-6 'markdown-header-face-6
+  "Face name to use for level-6 headers.")
+
 (defvar markdown-inline-code-face 'markdown-inline-code-face
   "Face name to use for inline code.")
 
@@ -443,6 +455,16 @@ This will not take effect until Emacs is restarted."
 (defface markdown-header-face-4
   '((t :inherit markdown-header-face))
   "Face for level-4 headers."
+  :group 'markdown-faces)
+
+(defface markdown-header-face-5
+  '((t :inherit markdown-header-face))
+  "Face for level-5 headers."
+  :group 'markdown-faces)
+
+(defface markdown-header-face-6
+  '((t :inherit markdown-header-face))
+  "Face for level-6 headers."
   :group 'markdown-faces)
 
 (defface markdown-inline-code-face
@@ -523,6 +545,14 @@ This will not take effect until Emacs is restarted."
   "^\\(#### \\)\\(.*?\\)\\($\\| #+$\\)"
   "Regular expression for level 4 atx-style (hash mark) headers.")
 
+(defconst markdown-regex-header-5-atx
+  "^\\(##### \\)\\(.*?\\)\\($\\| #+$\\)"
+  "Regular expression for level 5 atx-style (hash mark) headers.")
+
+(defconst markdown-regex-header-6-atx
+  "^\\(###### \\)\\(.*?\\)\\($\\| #+$\\)"
+  "Regular expression for level 6 atx-style (hash mark) headers.")
+
 (defconst markdown-regex-header-1-setext
   "^\\(.*\\)\n\\(===+\\)$"
   "Regular expression for level 1 setext-style (underline) headers.")
@@ -592,6 +622,10 @@ This will not take effect until Emacs is restarted."
     "^\\\\\\[\\(.\\|\n\\)*?\\\\\\]$"
   "Regular expression for itex \[..\] display mode expressions.")
 
+(defconst markdown-regex-list-indent
+  "^\\(\\s *\\)\\([0-9]+\\.\\|[\\*\\+-]\\)\\(\\s +\\)"
+  "Regular expression for matching indentation of list items.")
+
 ; From html-helper-mode
 (defun markdown-match-comments (last)
   "Matches HTML comments from the point to LAST"
@@ -615,6 +649,8 @@ This will not take effect until Emacs is restarted."
    (cons markdown-regex-header-2-atx 'markdown-header-face-2)
    (cons markdown-regex-header-3-atx 'markdown-header-face-3)
    (cons markdown-regex-header-4-atx 'markdown-header-face-4)
+   (cons markdown-regex-header-5-atx 'markdown-header-face-5)
+   (cons markdown-regex-header-6-atx 'markdown-header-face-6)
    (cons markdown-regex-code '(2 markdown-inline-code-face))
    (cons markdown-regex-hr 'markdown-header-face)
    (cons markdown-regex-list 'markdown-list-face)
@@ -778,6 +814,13 @@ as the header text."
   (interactive)
   (markdown-insert-header 5))
 
+(defun markdown-insert-header-6 ()
+  "Insert a sixth level atx-style (hash mark) header.
+If Transient Mark mode is on and a region is active, it is used
+as the header text."
+  (interactive)
+  (markdown-insert-header 6))
+
 (defun markdown-insert-header (n)
   "Insert an atx-style (hash mark) header.
 With no prefix argument, insert a level-1 header.  With prefix N,
@@ -899,42 +942,57 @@ Arguments BEG and END specify the beginning and end of the region."
     (setq positions (cdr positions)))
   (or (cadr positions) 0))
 
+(defun markdown-prev-line-indent-p ()
+  "Return t if the previous line is indented."
+  (save-excursion
+    (forward-line -1)
+    (goto-char (point-at-bol))
+    (if (re-search-forward "^\\s " (point-at-eol) t) t)))
+
+(defun markdown-prev-line-indent ()
+  "Return the number of leading whitespace characters in the previous line."
+  (save-excursion
+    (forward-line -1)
+    (goto-char (point-at-bol))
+    (when (re-search-forward "^\\s +" (point-at-eol) t)
+        (current-column))))
+
+(defun markdown-prev-list-indent ()
+  "Return position of the first non-list-marker on the previous line."
+  (save-excursion
+    (forward-line -1)
+    (goto-char (point-at-bol))
+    (when (re-search-forward markdown-regex-list-indent (point-at-eol) t)
+        (current-column))))
+
 (defun markdown-indent-line ()
   "Indent the current line using some heuristics."
   (interactive)
-  (let (cur-pos
+  (if (markdown-prev-line-indent-p)
+      ;; If the current column is any of the positions, remove all
+      ;; of the positions up-to and including the current column
+      (indent-line-to
+       (markdown-indent-find-next-position
+        (current-column) (markdown-calc-indents)))))
+
+(defun markdown-calc-indents ()
+  "Return a list of indentation columns to cycle through."
+  (let (pos
         prev-line-pos
         positions
         computed-pos)
-    (setq cur-pos (current-column))
 
-    ;; Indentation of previous line
-    (setq pos
-          (save-excursion
-            (forward-line -1)
-            (goto-char (point-at-bol))
-            (when (re-search-forward "\\s +" (point-at-eol) t)
-              (current-column))))
-    (if pos
-        (progn
-          (setq prev-line-pos pos)
-          (setq positions (cons pos positions))))
+    ;; Previous line indent
+    (setq prev-line-pos (markdown-prev-line-indent))
+    (setq positions (cons prev-line-pos positions))
 
-    ;; Position of the first non-list marker on the previous line
-    (setq pos
-          (save-excursion
-            (forward-line -1)
-            (goto-char (point-at-bol))
-            (when (re-search-forward "\\s *\\([0-9]\\.\\|[-\\*\\+]\\)\\s *" (point-at-eol) t)
-              (current-column))))
-    (if pos
-        (setq positions (cons pos positions)))
+    ;; Previous non-list-marker indent
+    (setq positions (cons (markdown-prev-list-indent) positions))
 
     ;; Indentation of the previous line + tab-width
     (cond
      (prev-line-pos
-      (setq positions (cons (+ (car positions) tab-width) positions)))
-
+      (setq positions (cons (+ prev-line-pos tab-width) positions)))
      (t
       (setq positions (cons tab-width positions))))
 
@@ -943,40 +1001,31 @@ Arguments BEG and END specify the beginning and end of the region."
              (> prev-line-pos tab-width))
         (setq positions (cons (- prev-line-pos tab-width) positions)))
 
-    ;; Indentation of the bullet of any preceeding line
+    ;; Indentation of preceeding list item
     (setq pos
           (save-excursion
+            (forward-line -1)
             (catch 'break
               (while (not (equal (point) (point-min)))
                 (forward-line -1)
                 (goto-char (point-at-bol))
-                (when (re-search-forward markdown-regex-list (point-at-eol) t)
-                  (throw 'break (- (current-column) (length (match-string 1))))))
+                (when (re-search-forward markdown-regex-list-indent (point-at-eol) t)
+                  (throw 'break (length (match-string 1)))))
               nil)))
     (if pos
         (setq positions (cons pos positions)))
 
-
+    ;; First column
     (setq positions (cons 0 (reverse positions)))
 
-    ;; If the current column is any of the positions, remove all of the positions up-to
-    ;; and including the current column
-
-    (setq computed-pos (markdown-indent-find-next-position cur-pos positions))
-    (indent-line-to computed-pos)))
-
+    positions))
 
 (defun markdown-enter-key ()
   "Insert a newline and optionally indent the next line."
   (interactive)
-  (let (indent)
-    (if markdown-indent-on-enter
-        (setq indent
-              (save-excursion
-                (goto-char (point-at-bol))
-                (if (re-search-forward "^\\s " (point-at-eol) t) t))))
-    (newline)
-    (if indent (funcall indent-line-function))))
+  (newline)
+  (if markdown-indent-on-enter
+      (funcall indent-line-function)))
 
 
 
@@ -993,6 +1042,7 @@ Arguments BEG and END specify the beginning and end of the region."
     (define-key markdown-mode-map "\C-c\C-t3" 'markdown-insert-header-3)
     (define-key markdown-mode-map "\C-c\C-t4" 'markdown-insert-header-4)
     (define-key markdown-mode-map "\C-c\C-t5" 'markdown-insert-header-5)
+    (define-key markdown-mode-map "\C-c\C-t6" 'markdown-insert-header-6)
     (define-key markdown-mode-map "\C-c\C-pb" 'markdown-insert-bold)
     (define-key markdown-mode-map "\C-c\C-ss" 'markdown-insert-bold)
     (define-key markdown-mode-map "\C-c\C-pi" 'markdown-insert-italic)
@@ -1039,7 +1089,8 @@ Arguments BEG and END specify the beginning and end of the region."
      ["Second level" markdown-insert-header-2]
      ["Third level" markdown-insert-header-3]
      ["Fourth level" markdown-insert-header-4]
-     ["Fifth level" markdown-insert-header-5])
+     ["Fifth level" markdown-insert-header-5]
+     ["Sixth level" markdown-insert-header-6])
     "---"
     ["Bold" markdown-insert-bold]
     ["Italic" markdown-insert-italic]
@@ -1116,7 +1167,7 @@ When RECHECK is non-nil, BUFFER gets rechecked for undefined
 references so that REF disappears from the list of those links."
   (with-current-buffer buffer
       (when (not (eq major-mode 'markdown-mode))
-        (error "Not available in current mdoe"))
+        (error "Not available in current mode"))
       (goto-char (point-max))
       (indent-new-comment-line)
       (insert (concat ref ": ")))
@@ -1366,6 +1417,12 @@ This is an exact copy of `line-number-at-pos' for use in emacs21."
       (forward-line 0)
       (1+ (count-lines start (point))))))
 
+(defun markdown-nobreak-p ()
+  "Returns nil if it is ok for fill-paragraph to insert a line
+  break at point"
+  ;; are we inside in square brackets
+  (looking-back "\\[[^]]*"))
+
 
 
 ;;; Mode definition  ==========================================================
@@ -1393,15 +1450,17 @@ This is an exact copy of `line-number-at-pos' for use in emacs21."
   (set (make-local-variable 'font-lock-multiline) t)
   ;; For menu support in XEmacs
   (easy-menu-add markdown-mode-menu markdown-mode-map)
-  ;; Make filling work with lists
+  ;; Make filling work with lists (unordered, ordered, and definition)
   (set (make-local-variable 'paragraph-start)
-       "\f\\|[ \t]*$\\|^[ \t]*[*+-] \\|^[ \t*][0-9]+\\. ")
+       "\f\\|[ \t]*$\\|^[ \t]*[*+-] \\|^[ \t*][0-9]+\\.\\|^[ \t]*: ")
   ;; Outline mode
   (make-local-variable 'outline-regexp)
   (setq outline-regexp "#+")
   ;; Cause use of ellipses for invisible text.
   (add-to-invisibility-spec '(outline . t))
-  ;; Indentation
+  ;; Indentation and filling
+  (make-local-variable 'fill-nobreak-predicate)
+  (add-hook 'fill-nobreak-predicate 'markdown-nobreak-p)
   (setq indent-line-function markdown-indent-function))
 
 ;(add-to-list 'auto-mode-alist '("\\.text$" . markdown-mode))
