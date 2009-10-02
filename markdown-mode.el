@@ -1465,6 +1465,14 @@ This is an exact copy of `line-number-at-pos' for use in emacs21."
 
 ;(add-to-list 'auto-mode-alist '("\\.text$" . markdown-mode))
 
+
+(add-hook 'markdown-mode-hook
+	  (lambda ()
+	    (make-local-variable 'fill-nobreak-predicate)
+	    (add-hook 'fill-nobreak-predicate 'markdown-nobreak-p)))
+
+
+
 (provide 'markdown-mode)
 
 ;;; markdown-mode.el ends here
